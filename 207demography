@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+#
+# EPITECH PROJECT, 2020
+# 205IQ_2019
+# File description:
+# 205IQ
+#
+
+
+import sys
+import math
+
+def check_for_err():
+    halp = open("help", "r")
+
+    if len(sys.argv) > 1 and sys.argv[1] == "-h":
+        print(halp.read(), end = '')
+        sys.exit(0)
+    if len(sys.argv) < 2:
+        print("Flag error. Try -h for more informations.")
+        sys.exit(84)
+    flag = []
+    for i in range(2, len(sys.argv)):
+        try:
+            flag.append(float(sys.argv[i]))
+        except ValueError:
+            print("Flag error. Try -h for more informations.")
+            sys.exit(84)
+    return flag
+
+def display(res):
+    pass
+
+def calc(val):
+    print(val)
+
+    return 0
+
+def main():
+    x = check_for_err()
+
+    calc(x)
+
+if __name__ == "__main__":
+    main()
