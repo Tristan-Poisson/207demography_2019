@@ -9,6 +9,13 @@
 
 import sys
 import math
+import csv
+from functools import reduce
+
+NB_ARGS = len(sys.argv) - 1
+N = 58
+a = lambda x, y: (sum(y) * sum(map(lambda x: x ** 2, x)) - sum(x) * sum(x[i] * y[i] for i in range(N))) / (N * sum(map(lambda x: x ** 2, x)) - sum(x) ** 2)
+b = lambda x, y: (N * sum(x[i] * y[i] for i in range(N)) - sum(x) * sum(y)) / (N * sum(map(lambda x: x ** 2, x)) - sum(x) ** 2)
 
 def check_for_err():
     halp = open("help", "r")
@@ -20,26 +27,76 @@ def check_for_err():
         print("Flag error. Try -h for more informations.")
         sys.exit(84)
     flag = []
-    for i in range(2, len(sys.argv)):
+    for i in range(1, len(sys.argv)):
         try:
-            flag.append(float(sys.argv[i]))
+            flag.append(sys.argv[i])
         except ValueError:
             print("Flag error. Try -h for more informations.")
             sys.exit(84)
     return flag
 
-def display(res):
-    pass
+def get_country(datas, country):
+    for data in datas:
+        if data['Country Code'] == country:
+            return dict(data)
+    raise ValueError("207demography: can't find %s in database" % country)
 
-def calc(val):
-    print(val)
+def get_data(c):
+    reader = csv.DictReader(open('207demography_data.csv'), delimiter=';')
+    data = list()
+    for row in reader:
+        data.append(row)
+    countries = list()
+    for country in sys.argv[1:]:
+        countries.append(get_country(data, country))
+    return (countries)
 
+def display(res, data):
+    print("Country:", ", ".join(country['Country Name'] for country in data))
+    print("Fit1\n\tY = %.2f X %s %.2f" % (res["fit1"][0], '+' if res["fit1"][1] >= 0 else '-', abs(res["fit1"][1])))
+    print("\tRoot-mean-square deviation: %.2f" % res["rmsd1"])
+    print("\tPopulation in 2050: %.2f" % res["pop1"])
+    print("Fit2\n\tX = %.2f Y %s %.2f" % (res["fit2"][0], '+' if res["fit2"][1] >= 0 else '-', abs(res["fit2"][1])))
+    print("\tRoot-mean-square deviation: %.2f" % res["rmsd2"])
+    print("\tPopulation in 2050: %.2f" % res["pop2"])
+    print("Correlation: %.4f" % res["cor"])
+
+def calc_rmsd1(data, a, b):
+    tmp = [0] * (N - 1)
+    for country in data:
+        for i in range(1960, 2017):
+            tmp[i - 1960] += (((int(country[str(i)])/1000000) - (a * i + b))**2)
+    res = math.sqrt(sum(tmp) / (N - 1))
+    return res
+
+def calc_rmsd2(data, a, b):
+    tmp = [0] * (N - 1)
+    for country in data:
+        for i in range(1960, 2017):
+            tmp[i - 1960] += (((int(country[str(i)])/1000000) - ((-b + i) / a))**2)
+    res = math.sqrt(sum(tmp) / (N - 2))
+    return res
+
+def calc(val, data):
+    res = {"fit1": [], "fit2": [], "rmsd1": 0.0, "rmsd2": 0.0, "pop1": 0.0, "pop2": 0.0, "cor": 0.0}
+    x = reduce(lambda a, b: [a[i] + b[i] for i in range(len(a))], [[int(x) for x in country if x != 'Country Name' and x != 'Country Code'] for country in data])
+    y = reduce(lambda a, b: [a[i] + b[i] for i in range(len(a))], [[int(country[x]) for x in country if x != 'Country Name' and x != 'Country Code'] for country in data])
+    res["fit1"].append(NB_ARGS * b(x, y) / 1000000)
+    res["fit1"].append(a(x, y) / 1000000)
+    res["rmsd1"] = calc_rmsd1(data, res["fit1"][0], res["fit1"][1])
+    res["pop1"] = res["fit1"][0] * 2050 + res["fit1"][1]
+    res["fit2"].append(b(y, x) * 1000000 / NB_ARGS)
+    res["fit2"].append(a(y, x) / NB_ARGS)
+    res["rmsd2"] = calc_rmsd2(data, res["fit2"][0], res["fit2"][1])
+    res["pop2"] = (-res["fit2"][1] + 2050) / res["fit2"][0]
+    res["cor"] = 1
+    display(res, data)
     return 0
 
 def main():
     x = check_for_err()
-
-    calc(x)
+    data = get_data(x)
+    calc(x, data)
 
 if __name__ == "__main__":
     main()
